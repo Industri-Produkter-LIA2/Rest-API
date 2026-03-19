@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Local SQLite databases
+IPShop.Api/*.db
+
 # User-specific files
 *.rsuser
 *.suo

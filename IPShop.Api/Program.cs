@@ -1,6 +1,8 @@
 using IPShop.Api.Data;
 using IPShop.Api.Models;
 using Microsoft.EntityFrameworkCore;
+using System.IO;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,10 +25,28 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+var frontendPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "Frontend"));
+var frontendAvailable = false;
+if (Directory.Exists(frontendPath))
+{
+    frontendAvailable = true;
+    var frontendProvider = new PhysicalFileProvider(frontendPath);
+    app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = frontendProvider });
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = frontendProvider });
+}
+
 app.UseHttpsRedirection();
 
-app.MapGet("/", () => "IPShop API is running")
-    .WithName("Health")
+app.MapGet("/", (HttpContext http) =>
+{
+    if (frontendAvailable)
+    {
+        return Results.Redirect("/index.html");
+    }
+
+    return Results.Text("IPShop API is running");
+})
+.WithName("Health")
 .WithOpenApi();
 
 app.MapGet("/products", async (IPShopDbContext dbContext) =>

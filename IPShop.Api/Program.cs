@@ -49,9 +49,50 @@ app.MapGet("/", (HttpContext http) =>
 .WithName("Health")
 .WithOpenApi();
 
-app.MapGet("/products", async (IPShopDbContext dbContext) =>
+app.MapGet("/products", async (
+    string? articleNumber,
+    string? name,
+    string? category,
+    decimal? minPrice,
+    decimal? maxPrice,
+    IPShopDbContext dbContext) =>
 {
-    var products = await dbContext.Products
+    if (minPrice.HasValue && maxPrice.HasValue && minPrice > maxPrice)
+    {
+        return Results.BadRequest(new { message = "minPrice cannot be greater than maxPrice." });
+    }
+
+    var query = dbContext.Products.AsQueryable();
+
+    if (!string.IsNullOrWhiteSpace(articleNumber))
+    {
+        var value = articleNumber.Trim();
+        query = query.Where(p => p.ArticleNumber.Contains(value));
+    }
+
+    if (!string.IsNullOrWhiteSpace(name))
+    {
+        var value = name.Trim();
+        query = query.Where(p => p.Name.Contains(value));
+    }
+
+    if (!string.IsNullOrWhiteSpace(category))
+    {
+        var value = category.Trim();
+        query = query.Where(p => p.Category.Contains(value));
+    }
+
+    if (minPrice.HasValue)
+    {
+        query = query.Where(p => p.Price >= minPrice.Value);
+    }
+
+    if (maxPrice.HasValue)
+    {
+        query = query.Where(p => p.Price <= maxPrice.Value);
+    }
+
+    var products = await query
         .OrderBy(p => p.Name)
         .ToListAsync();
 
@@ -70,12 +111,61 @@ app.MapGet("/products/{id:int}", async (int id, IPShopDbContext dbContext) =>
 
 app.MapPost("/products", async (Product product, IPShopDbContext dbContext) =>
 {
+    var articleExists = await dbContext.Products
+        .AnyAsync(p => p.ArticleNumber == product.ArticleNumber);
+    if (articleExists)
+    {
+        return Results.Conflict(new { message = "ArticleNumber already exists." });
+    }
+
     dbContext.Products.Add(product);
     await dbContext.SaveChangesAsync();
 
     return Results.Created($"/products/{product.Id}", product);
 })
 .WithName("CreateProduct")
+.WithOpenApi();
+
+app.MapPut("/products/{id:int}", async (int id, Product input, IPShopDbContext dbContext) =>
+{
+    var product = await dbContext.Products.FindAsync(id);
+    if (product is null)
+    {
+        return Results.NotFound();
+    }
+
+    var duplicateArticle = await dbContext.Products
+        .AnyAsync(p => p.Id != id && p.ArticleNumber == input.ArticleNumber);
+    if (duplicateArticle)
+    {
+        return Results.Conflict(new { message = "ArticleNumber already exists." });
+    }
+
+    product.ArticleNumber = input.ArticleNumber;
+    product.Name = input.Name;
+    product.Description = input.Description;
+    product.Price = input.Price;
+    product.Category = input.Category;
+
+    await dbContext.SaveChangesAsync();
+    return Results.Ok(product);
+})
+.WithName("UpdateProduct")
+.WithOpenApi();
+
+app.MapDelete("/products/{id:int}", async (int id, IPShopDbContext dbContext) =>
+{
+    var product = await dbContext.Products.FindAsync(id);
+    if (product is null)
+    {
+        return Results.NotFound();
+    }
+
+    dbContext.Products.Remove(product);
+    await dbContext.SaveChangesAsync();
+    return Results.NoContent();
+})
+.WithName("DeleteProduct")
 .WithOpenApi();
 
 app.Run();

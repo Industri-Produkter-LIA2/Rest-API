@@ -3,6 +3,7 @@ using IPShop.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using System.IO;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.Rewrite;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,8 +32,15 @@ if (Directory.Exists(frontendPath))
 {
     frontendAvailable = true;
     var frontendProvider = new PhysicalFileProvider(frontendPath);
+
+    // Sets new url to be just localhost:5088/products instead of localhost:5088/src/pages/products.html, because I changed the file structure in frontend and this looks cleaner
+    var rewriteOptions = new RewriteOptions()
+        .AddRewrite(@"^products/?$", "src/pages/products.html", skipRemainingRules: true);
+    app.UseRewriter(rewriteOptions);
+
     app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = frontendProvider });
     app.UseStaticFiles(new StaticFileOptions { FileProvider = frontendProvider });
+
 }
 
 app.UseHttpsRedirection();
@@ -41,7 +49,7 @@ app.MapGet("/", (HttpContext http) =>
 {
     if (frontendAvailable)
     {
-        return Results.Redirect("/index.html");
+        return Results.Redirect("/products"); //Changed to redirect to /products instead of the old /index.html
     }
 
     return Results.Text("IPShop API is running");
@@ -49,7 +57,7 @@ app.MapGet("/", (HttpContext http) =>
 .WithName("Health")
 .WithOpenApi();
 
-app.MapGet("/products", async (
+app.MapGet("/api/products", async ( // Changed to /api/products to avoid conflict with frontend route, the same applies to every product endpoint.
     string? articleNumber,
     string? name,
     string? category,
@@ -101,7 +109,7 @@ app.MapGet("/products", async (
 .WithName("GetProducts")
 .WithOpenApi();
 
-app.MapGet("/products/{id:int}", async (int id, IPShopDbContext dbContext) =>
+app.MapGet("/api/products/{id:int}", async (int id, IPShopDbContext dbContext) =>
 {
     var product = await dbContext.Products.FindAsync(id);
     return product is null ? Results.NotFound() : Results.Ok(product);
@@ -109,7 +117,7 @@ app.MapGet("/products/{id:int}", async (int id, IPShopDbContext dbContext) =>
 .WithName("GetProductById")
 .WithOpenApi();
 
-app.MapPost("/products", async (Product product, IPShopDbContext dbContext) =>
+app.MapPost("/api/products", async (Product product, IPShopDbContext dbContext) =>
 {
     var articleExists = await dbContext.Products
         .AnyAsync(p => p.ArticleNumber == product.ArticleNumber);
@@ -126,7 +134,7 @@ app.MapPost("/products", async (Product product, IPShopDbContext dbContext) =>
 .WithName("CreateProduct")
 .WithOpenApi();
 
-app.MapPut("/products/{id:int}", async (int id, Product input, IPShopDbContext dbContext) =>
+app.MapPut("/api/products/{id:int}", async (int id, Product input, IPShopDbContext dbContext) =>
 {
     var product = await dbContext.Products.FindAsync(id);
     if (product is null)
@@ -153,7 +161,7 @@ app.MapPut("/products/{id:int}", async (int id, Product input, IPShopDbContext d
 .WithName("UpdateProduct")
 .WithOpenApi();
 
-app.MapDelete("/products/{id:int}", async (int id, IPShopDbContext dbContext) =>
+app.MapDelete("/api/products/{id:int}", async (int id, IPShopDbContext dbContext) =>
 {
     var product = await dbContext.Products.FindAsync(id);
     if (product is null)

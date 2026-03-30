@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.IO;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.Rewrite;
+using IPShop.Api.Dtos;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -150,14 +151,30 @@ app.MapPost("/api/products", async (Product product, IPShopDbContext dbContext) 
 
 //shopping cart endpoints
 
-app.MapPost("/cart", async (IPShopDbContext dbContext) =>
+app.MapPost("/cart", async (int? customerId, IPShopDbContext dbContext) =>
 {
     var cart = new Cart();
+
+    if (customerId.HasValue)
+    {
+        var customer = await dbContext.Customers.FindAsync(customerId.Value);
+        if (customer is null)
+            return Results.NotFound(new { message = "Customer not found" });
+
+        cart.CustomerId = customerId.Value;
+    }
 
     dbContext.Carts.Add(cart);
     await dbContext.SaveChangesAsync();
 
-    return Results.Ok(cart);
+    // Make sure to return the cart with its Id
+    return Results.Ok(new
+    {
+        id = cart.Id,
+        createdAt = cart.CreatedAt,
+        customerId = cart.CustomerId,
+        items = cart.Items ?? new List<CartItem>()
+    });
 })
 .WithName("CreateCart")
 .WithOpenApi();
@@ -175,34 +192,54 @@ app.MapGet("/cart/{cartId:guid}", async (Guid cartId, IPShopDbContext dbContext)
 .WithOpenApi();
 
 
-app.MapPost("/cart/{cartId:guid}/items", async (Guid cartId, CartItem request, IPShopDbContext dbContext) =>
+app.MapPost("/cart/{cartId:guid}/items", async (Guid cartId, AddToCartRequest request, IPShopDbContext dbContext) =>
 {
+    // Get cart with items
     var cart = await dbContext.Carts
         .Include(c => c.Items)
         .FirstOrDefaultAsync(c => c.Id == cartId);
 
     if (cart is null)
-        return Results.NotFound();
+        return Results.NotFound(new { message = "Cart not found" });
 
+    // Check if product exists
+    var product = await dbContext.Products.FindAsync(request.ProductId);
+    if (product is null)
+        return Results.NotFound(new { message = "Product not found" });
+
+    // Check if quantity is valid
+    if (request.Quantity <= 0)
+        return Results.BadRequest(new { message = "Quantity must be greater than 0" });
+
+    // Check if product already exists in cart
     var existingItem = cart.Items
         .FirstOrDefault(i => i.ProductId == request.ProductId);
 
     if (existingItem != null)
     {
+        // Update quantity if product already in cart
         existingItem.Quantity += request.Quantity;
     }
     else
     {
+        // Add new item to cart
         cart.Items.Add(new CartItem
         {
             ProductId = request.ProductId,
-            Quantity = request.Quantity
+            Quantity = request.Quantity,
+            CartId = cartId
         });
     }
 
     await dbContext.SaveChangesAsync();
 
-    return Results.Ok(cart);
+    // Return updated cart with product details
+    var updatedCart = await dbContext.Carts
+        .Include(c => c.Items)
+        .ThenInclude(i => i.Product)
+        .FirstOrDefaultAsync(c => c.Id == cartId);
+
+    return Results.Ok(updatedCart);
 })
 .WithName("AddCartItem")
 .WithOpenApi();

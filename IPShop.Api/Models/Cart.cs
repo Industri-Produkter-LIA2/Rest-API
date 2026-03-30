@@ -6,7 +6,9 @@ public class Cart
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public List<CartItem> Items { get; set; } = new();
+    public virtual List<CartItem> Items { get; set; } = new();
 
-    //todo add user id
+    public int? CustomerId { get; set; }
+
+    public virtual Customer? Customer { get; set; }
 }

@@ -1,8 +1,0 @@
-@IPShop.Api_HostAddress = http://localhost:5088
-
-GET {{IPShop.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
-
-// Don't think we need this file, correct me if I'm wrong. Feel free to delete, keeping it for now in case someone needs it.

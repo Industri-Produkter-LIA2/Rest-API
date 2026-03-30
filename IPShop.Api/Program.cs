@@ -9,8 +9,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<IPShopDbContext>(options =>
-builder.Services.AddEndpointsApiExplorer();
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddCors(options =>
 {

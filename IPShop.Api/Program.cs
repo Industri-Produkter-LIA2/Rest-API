@@ -4,13 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using System.IO;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.Rewrite;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<IPShopDbContext>(options =>
-builder.Services.AddEndpointsApiExplorer();
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddCors(options =>
 {

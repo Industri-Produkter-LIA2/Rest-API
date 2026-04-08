@@ -23,4 +23,9 @@ public class Product
     [Required]
     [MaxLength(100)]
     public string Category { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(500)]
+    [Url]
+    public string ImageUrl { get; set; } = string.Empty;
 }

@@ -8,11 +8,21 @@ using IPShop.Api.Dtos;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "IPShop API", Version = "v1" });
+});
+
 builder.Services.AddDbContext<IPShopDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddScoped<IFileService, FileService>();
 
 builder.Services.AddCors(options =>
 {
@@ -32,6 +42,8 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<IPShopDbContext>();
     dbContext.Database.Migrate();
 }
+
+app.UseCors("AllowFrontend");
 
 if (app.Environment.IsDevelopment())
 {
@@ -57,9 +69,10 @@ if (Directory.Exists(frontendPath))
 
 }
 
-app.UseCors("AllowFrontend");
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
+
+app.MapControllers();
 
 app.MapGet("/", (HttpContext http) =>
 {
@@ -73,235 +86,83 @@ app.MapGet("/", (HttpContext http) =>
 .WithName("Health")
 .WithOpenApi();
 
-app.MapGet("/api/products", async ( // Changed to /api/products to avoid conflict with frontend route, the same applies to every product endpoint.
-    string? articleNumber,
-    string? name,
-    string? category,
-    decimal? minPrice,
-    decimal? maxPrice,
-    IPShopDbContext dbContext) =>
-{
-    if (minPrice.HasValue && maxPrice.HasValue && minPrice > maxPrice)
-    {
-        return Results.BadRequest(new { message = "minPrice cannot be greater than maxPrice." });
-    }
+// this moved to controller
 
-    var query = dbContext.Products.AsQueryable();
+//app.MapGet("/api/products", async ( // Changed to /api/products to avoid conflict with frontend route, the same applies to every product endpoint.
+//    string? articleNumber,
+//    string? name,
+//    string? category,
+//    decimal? minPrice,
+//    decimal? maxPrice,
+//    IPShopDbContext dbContext) =>
+//{
+//    if (minPrice.HasValue && maxPrice.HasValue && minPrice > maxPrice)
+//    {
+//        return Results.BadRequest(new { message = "minPrice cannot be greater than maxPrice." });
+//    }
 
-    if (!string.IsNullOrWhiteSpace(articleNumber))
-    {
-        var value = articleNumber.Trim();
-        query = query.Where(p => p.ArticleNumber.Contains(value));
-    }
+//    var query = dbContext.Products.AsQueryable();
 
-    if (!string.IsNullOrWhiteSpace(name))
-    {
-        var value = name.Trim();
-        query = query.Where(p => p.Name.Contains(value));
-    }
+//    if (!string.IsNullOrWhiteSpace(articleNumber))
+//    {
+//        var value = articleNumber.Trim();
+//        query = query.Where(p => p.ArticleNumber.Contains(value));
+//    }
 
-    if (!string.IsNullOrWhiteSpace(category))
-    {
-        var value = category.Trim();
-        query = query.Where(p => p.Category.Contains(value));
-    }
+//    if (!string.IsNullOrWhiteSpace(name))
+//    {
+//        var value = name.Trim();
+//        query = query.Where(p => p.Name.Contains(value));
+//    }
 
-    if (minPrice.HasValue)
-    {
-        query = query.Where(p => p.Price >= minPrice.Value);
-    }
+//    if (!string.IsNullOrWhiteSpace(category))
+//    {
+//        var value = category.Trim();
+//        query = query.Where(p => p.Category.Contains(value));
+//    }
 
-    if (maxPrice.HasValue)
-    {
-        query = query.Where(p => p.Price <= maxPrice.Value);
-    }
+//    if (minPrice.HasValue)
+//    {
+//        query = query.Where(p => p.Price >= minPrice.Value);
+//    }
 
-    var products = await query
-        .OrderBy(p => p.Name)
-        .ToListAsync();
+//    if (maxPrice.HasValue)
+//    {
+//        query = query.Where(p => p.Price <= maxPrice.Value);
+//    }
 
-    return Results.Ok(products);
-})
-.WithName("GetProducts")
-.WithOpenApi();
+//    var products = await query
+//        .OrderBy(p => p.Name)
+//        .ToListAsync();
 
-app.MapGet("/api/products/{id:int}", async (int id, IPShopDbContext dbContext) =>
-{
-    var product = await dbContext.Products.FindAsync(id);
-    return product is null ? Results.NotFound() : Results.Ok(product);
-})
-.WithName("GetProductById")
-.WithOpenApi();
+//    return Results.Ok(products);
+//})
+//.WithName("GetProducts")
+//.WithOpenApi();
 
-app.MapPost("/api/products", async (Product product, IPShopDbContext dbContext) =>
-{
-    var articleExists = await dbContext.Products
-        .AnyAsync(p => p.ArticleNumber == product.ArticleNumber);
-    if (articleExists)
-    {
-        return Results.Conflict(new { message = "ArticleNumber already exists." });
-    }
+//app.MapGet("/api/products/{id:int}", async (int id, IPShopDbContext dbContext) =>
+//{
+//    var product = await dbContext.Products.FindAsync(id);
+//    return product is null ? Results.NotFound() : Results.Ok(product);
+//})
+//.WithName("GetProductById")
+//.WithOpenApi();
 
-    dbContext.Products.Add(product);
-    await dbContext.SaveChangesAsync();
+//app.MapPost("/api/products", async (Product product, IPShopDbContext dbContext) =>
+//{
+//    var articleExists = await dbContext.Products
+//        .AnyAsync(p => p.ArticleNumber == product.ArticleNumber);
+//    if (articleExists)
+//    {
+//        return Results.Conflict(new { message = "ArticleNumber already exists." });
+//    }
 
-    return Results.Created($"/products/{product.Id}", product);
-})
-.WithName("CreateProduct")
-.WithOpenApi();
+//    dbContext.Products.Add(product);
+//    await dbContext.SaveChangesAsync();
 
-//shopping cart endpoints
-
-app.MapPost("/cart", async (int? customerId, IPShopDbContext dbContext) =>
-{
-    var cart = new Cart();
-
-    if (customerId.HasValue)
-    {
-        var customer = await dbContext.Customers.FindAsync(customerId.Value);
-        if (customer is null)
-            return Results.NotFound(new { message = "Customer not found" });
-
-        cart.CustomerId = customerId.Value;
-    }
-
-    dbContext.Carts.Add(cart);
-    await dbContext.SaveChangesAsync();
-
-    // Make sure to return the cart with its Id
-    return Results.Ok(new
-    {
-        id = cart.Id,
-        createdAt = cart.CreatedAt,
-        customerId = cart.CustomerId,
-        items = cart.Items ?? new List<CartItem>()
-    });
-})
-.WithName("CreateCart")
-.WithOpenApi();
-
-app.MapGet("/cart/{cartId:guid}", async (Guid cartId, IPShopDbContext dbContext) =>
-{
-    var cart = await dbContext.Carts
-        .Include(c => c.Items)
-        .ThenInclude(i => i.Product)
-        .FirstOrDefaultAsync(c => c.Id == cartId);
-
-    return cart is null ? Results.NotFound() : Results.Ok(cart);
-})
-.WithName("GetCart")
-.WithOpenApi();
-
-
-app.MapPost("/cart/{cartId:guid}/items", async (Guid cartId, AddToCartRequest request, IPShopDbContext dbContext) =>
-{
-    // Get cart with items
-    var cart = await dbContext.Carts
-        .Include(c => c.Items)
-        .FirstOrDefaultAsync(c => c.Id == cartId);
-
-    if (cart is null)
-        return Results.NotFound(new { message = "Cart not found" });
-
-    // Check if product exists
-    var product = await dbContext.Products.FindAsync(request.ProductId);
-    if (product is null)
-        return Results.NotFound(new { message = "Product not found" });
-
-    // Check if quantity is valid
-    if (request.Quantity <= 0)
-        return Results.BadRequest(new { message = "Quantity must be greater than 0" });
-
-    // Check if product already exists in cart
-    var existingItem = cart.Items
-        .FirstOrDefault(i => i.ProductId == request.ProductId);
-
-    if (existingItem != null)
-    {
-        // Update quantity if product already in cart
-        existingItem.Quantity += request.Quantity;
-    }
-    else
-    {
-        // Add new item to cart
-        cart.Items.Add(new CartItem
-        {
-            ProductId = request.ProductId,
-            Quantity = request.Quantity,
-            CartId = cartId
-        });
-    }
-
-    await dbContext.SaveChangesAsync();
-
-    // Return updated cart with product details
-    var updatedCart = await dbContext.Carts
-        .Include(c => c.Items)
-        .ThenInclude(i => i.Product)
-        .FirstOrDefaultAsync(c => c.Id == cartId);
-
-    return Results.Ok(updatedCart);
-})
-.WithName("AddCartItem")
-.WithOpenApi();
-
-
-app.MapDelete("/cart/{cartId:guid}/items/{itemId:int}", async (Guid cartId, int itemId, IPShopDbContext dbContext) =>
-{
-    var item = await dbContext.CartItems
-        .FirstOrDefaultAsync(i => i.Id == itemId && i.CartId == cartId);
-
-    if (item is null)
-        return Results.NotFound();
-
-    dbContext.CartItems.Remove(item);
-    await dbContext.SaveChangesAsync();
-
-    return Results.NoContent();
-})
-.WithName("RemoveCartItem")
-.WithOpenApi();
-
-app.MapPut("/api/products/{id:int}", async (int id, Product input, IPShopDbContext dbContext) =>
-{
-    var product = await dbContext.Products.FindAsync(id);
-    if (product is null)
-    {
-        return Results.NotFound();
-    }
-
-    var duplicateArticle = await dbContext.Products
-        .AnyAsync(p => p.Id != id && p.ArticleNumber == input.ArticleNumber);
-    if (duplicateArticle)
-    {
-        return Results.Conflict(new { message = "ArticleNumber already exists." });
-    }
-
-    product.ArticleNumber = input.ArticleNumber;
-    product.Name = input.Name;
-    product.Description = input.Description;
-    product.Price = input.Price;
-    product.Category = input.Category;
-
-    await dbContext.SaveChangesAsync();
-    return Results.Ok(product);
-})
-.WithName("UpdateProduct")
-.WithOpenApi();
-
-app.MapDelete("/api/products/{id:int}", async (int id, IPShopDbContext dbContext) =>
-{
-    var product = await dbContext.Products.FindAsync(id);
-    if (product is null)
-    {
-        return Results.NotFound();
-    }
-
-    dbContext.Products.Remove(product);
-    await dbContext.SaveChangesAsync();
-    return Results.NoContent();
-})
-.WithName("DeleteProduct")
-.WithOpenApi();
+//    return Results.Created($"/products/{product.Id}", product);
+//})
+//.WithName("CreateProduct")
+//.WithOpenApi();
 
 app.Run();

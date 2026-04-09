@@ -61,7 +61,7 @@ public class CustomerController : ControllerBase
         return NoContent();
     }
 
-    // APPROVE customer (admin)
+    // APPROVE customer (admin) - ONLY companies allowed
     [HttpPut("{id}/approve")]
     public async Task<IActionResult> ApproveCustomer(int id)
     {
@@ -69,6 +69,12 @@ public class CustomerController : ControllerBase
 
         if (customer == null)
             return NotFound();
+
+        // 🔥 Företagskontroll (detta gör user story klar)
+        if (string.IsNullOrWhiteSpace(customer.Company))
+        {
+            return BadRequest("Endast företag får godkännas.");
+        }
 
         customer.IsApproved = true;
 

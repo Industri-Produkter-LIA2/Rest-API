@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
 builder.Services.AddDbContext<IPShopDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -41,7 +42,6 @@ if (Directory.Exists(frontendPath))
 
     app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = frontendProvider });
     app.UseStaticFiles(new StaticFileOptions { FileProvider = frontendProvider });
-
 }
 
 app.UseHttpsRedirection();
@@ -58,7 +58,7 @@ app.MapGet("/", (HttpContext http) =>
 .WithName("Health")
 .WithOpenApi();
 
-app.MapGet("/api/products", async ( // Changed to /api/products to avoid conflict with frontend route, the same applies to every product endpoint.
+app.MapGet("/api/products", async (
     string? articleNumber,
     string? name,
     string? category,
@@ -176,5 +176,7 @@ app.MapDelete("/api/products/{id:int}", async (int id, IPShopDbContext dbContext
 })
 .WithName("DeleteProduct")
 .WithOpenApi();
+
+app.MapControllers();
 
 app.Run();

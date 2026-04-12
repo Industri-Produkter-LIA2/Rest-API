@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using IPShop.Api.Data;
 using IPShop.Api.Models;
 
@@ -14,6 +13,16 @@ public class CustomerController : ControllerBase
     public CustomerController(IPShopDbContext context)
     {
         _context = context;
+    }
+
+    // CREATE customer
+    [HttpPost]
+    public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
+    {
+        _context.Customers.Add(customer);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
     }
 
     // GET customer
@@ -43,9 +52,32 @@ public class CustomerController : ControllerBase
         customer.Name = updatedCustomer.Name;
         customer.Company = updatedCustomer.Company;
         customer.Email = updatedCustomer.Email;
+        customer.OrgNumber = updatedCustomer.OrgNumber;
+        customer.Address = updatedCustomer.Address;
+        customer.InvoiceAddress = updatedCustomer.InvoiceAddress;
 
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    [HttpPut("{id}/approve")]
+    public async Task<IActionResult> ApproveCustomer(int id)
+    {
+        var customer = await _context.Customers.FindAsync(id);
+
+        if (customer == null)
+            return NotFound();
+
+        if (string.IsNullOrWhiteSpace(customer.Company))
+        {
+            return BadRequest("Endast företag får godkännas.");
+        }
+
+        customer.IsApproved = true;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(customer);
     }
 }

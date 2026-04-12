@@ -9,6 +9,8 @@ public class IPShopDbContext(DbContextOptions<IPShopDbContext> options) : DbCont
 
     public DbSet<Customer> Customers => Set<Customer>();
 
+    public DbSet<Account> Accounts => Set<Account>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Product>(entity =>

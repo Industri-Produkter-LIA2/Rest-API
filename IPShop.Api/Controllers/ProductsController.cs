@@ -133,7 +133,7 @@ public class ProductsController : ControllerBase
         }
         else
         {
-            product.ImageUrl = "https://via.placeholder.com/500x500?text=No+Image";
+            product.ImageUrl = "https://via.placeholder.com/50x500?text=No+Image";
         }
 
         _dbContext.Products.Add(product);

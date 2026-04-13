@@ -11,6 +11,9 @@ public class IPShopDbContext(DbContextOptions<IPShopDbContext> options) : DbCont
 
     public DbSet<Account> Accounts => Set<Account>();
 
+    public DbSet<Cart> Carts => Set<Cart>();
+    public DbSet<CartItem> CartItems => Set<CartItem>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Product>(entity =>

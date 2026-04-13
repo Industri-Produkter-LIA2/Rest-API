@@ -12,12 +12,10 @@ namespace IPShop.Api.Controllers;
 public class ProductsController : ControllerBase
 {
     private readonly IPShopDbContext _dbContext;
-    private readonly IFileService _fileService;
 
-    public ProductsController(IPShopDbContext dbContext, IFileService fileService)
+    public ProductsController(IPShopDbContext dbContext)
     {
         _dbContext = dbContext;
-        _fileService = fileService;
     }
 
     // GET: api/products
@@ -100,7 +98,7 @@ public class ProductsController : ControllerBase
 
     // POST: api/products
     [HttpPost]
-    public async Task<ActionResult<Product>> CreateProduct([FromForm] CreateProductDto createDto)
+    public async Task<ActionResult<Product>> CreateProduct([FromBody] CreateProductDto createDto)
     {
         var articleExists = await _dbContext.Products
             .AnyAsync(p => p.ArticleNumber == createDto.ArticleNumber);
@@ -116,43 +114,9 @@ public class ProductsController : ControllerBase
             Name = createDto.Name,
             Description = createDto.Description,
             Price = createDto.Price,
-            Category = createDto.Category
+            Category = createDto.Category,
+            ImageUrl = createDto.ImageUrl ?? string.Empty
         };
-
-        // Handle image upload if file is provided
-        if (createDto.ImageFile != null)
-        {
-            try
-            {
-                product.ImageUrl = await _fileService.UploadFileAsync(createDto.ImageFile);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-        else
-        {
-            product.ImageUrl = "https://via.placeholder.com/50x500?text=No+Image";
-        }
-
-        _dbContext.Products.Add(product);
-        await _dbContext.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
-    }
-
-    // POST: api/products (JSON version without file upload)
-    [HttpPost("json")]
-    public async Task<ActionResult<Product>> CreateProductJson([FromBody] Product product)
-    {
-        var articleExists = await _dbContext.Products
-            .AnyAsync(p => p.ArticleNumber == product.ArticleNumber);
-
-        if (articleExists)
-        {
-            return Conflict(new { message = "ArticleNumber already exists." });
-        }
 
         _dbContext.Products.Add(product);
         await _dbContext.SaveChangesAsync();
@@ -162,7 +126,7 @@ public class ProductsController : ControllerBase
 
     // PUT: api/products/{id}
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> UpdateProduct(int id, [FromForm] UpdateProductDto updateDto)
+    public async Task<IActionResult> UpdateProduct(int id, [FromBody] UpdateProductDto updateDto)
     {
         var existingProduct = await _dbContext.Products.FindAsync(id);
         if (existingProduct == null)
@@ -182,8 +146,6 @@ public class ProductsController : ControllerBase
             }
         }
 
-        var oldImageUrl = existingProduct.ImageUrl;
-
         // Update properties
         existingProduct.ArticleNumber = updateDto.ArticleNumber;
         existingProduct.Name = updateDto.Name;
@@ -192,77 +154,10 @@ public class ProductsController : ControllerBase
         existingProduct.Category = updateDto.Category;
 
         // Handle image upload if new file is provided
-        if (updateDto.ImageFile != null)
+        if (!string.IsNullOrWhiteSpace(updateDto.ImageUrl))
         {
-            try
-            {
-                existingProduct.ImageUrl = await _fileService.UploadFileAsync(updateDto.ImageFile);
-
-                // Delete old image if it's not the default placeholder
-                if (!string.IsNullOrEmpty(oldImageUrl) && !oldImageUrl.Contains("placeholder"))
-                {
-                    await _fileService.DeleteFileAsync(oldImageUrl);
-                }
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            existingProduct.ImageUrl = updateDto.ImageUrl;
         }
-
-        try
-        {
-            await _dbContext.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!ProductExists(id))
-            {
-                return NotFound();
-            }
-            else
-            {
-                throw;
-            }
-        }
-
-        return NoContent();
-    }
-
-    // PUT: api/products/{id}/json (JSON version without file upload)
-    [HttpPut("{id:int}/json")]
-    public async Task<IActionResult> UpdateProductJson(int id, [FromBody] Product product)
-    {
-        if (id != product.Id)
-        {
-            return BadRequest(new { message = "Product ID mismatch." });
-        }
-
-        var existingProduct = await _dbContext.Products.FindAsync(id);
-        if (existingProduct == null)
-        {
-            return NotFound();
-        }
-
-        // Check if article number is changed and if new one already exists
-        if (existingProduct.ArticleNumber != product.ArticleNumber)
-        {
-            var articleExists = await _dbContext.Products
-                .AnyAsync(p => p.ArticleNumber == product.ArticleNumber && p.Id != id);
-
-            if (articleExists)
-            {
-                return Conflict(new { message = "ArticleNumber already exists." });
-            }
-        }
-
-        // Update properties
-        existingProduct.ArticleNumber = product.ArticleNumber;
-        existingProduct.Name = product.Name;
-        existingProduct.Description = product.Description;
-        existingProduct.Price = product.Price;
-        existingProduct.Category = product.Category;
-        existingProduct.ImageUrl = product.ImageUrl;
 
         try
         {
@@ -336,12 +231,6 @@ public class ProductsController : ControllerBase
         if (product == null)
         {
             return NotFound(new { message = $"Product with ID {id} not found." });
-        }
-
-        // Delete associated image if not using placeholder
-        if (!string.IsNullOrEmpty(product.ImageUrl) && !product.ImageUrl.Contains("placeholder"))
-        {
-            await _fileService.DeleteFileAsync(product.ImageUrl);
         }
 
         _dbContext.Products.Remove(product);

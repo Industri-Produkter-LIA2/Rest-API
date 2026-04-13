@@ -33,7 +33,9 @@ public class CreateProductDto
     [MaxLength(100)]
     public string Category { get; set; } = string.Empty;
 
-    public IFormFile? ImageFile { get; set; }
+    [MaxLength(500)]
+    [Url]
+    public string? ImageUrl { get; set; }
 }
 public class UpdateProductDto
 {
@@ -54,7 +56,10 @@ public class UpdateProductDto
     [Required]
     [MaxLength(100)]
     public string Category { get; set; } = string.Empty;
-    public IFormFile? ImageFile { get; set; }
+
+    [MaxLength(500)]
+    [Url]
+    public string? ImageUrl { get; set; }
 }
 // DTOs for Patch operations
 public class PatchProductDto

@@ -65,7 +65,7 @@ public class AuthController : ControllerBase
 
         var account = new Account
         {
-            Email = request.Email.Trim().ToLower(),
+            Email = email,
             Username = request.Username,
             Password = request.Password,
             Role = Roles.Customer,

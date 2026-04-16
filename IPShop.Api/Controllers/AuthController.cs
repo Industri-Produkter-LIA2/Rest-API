@@ -99,10 +99,15 @@ public class AuthController : ControllerBase
     [HttpPatch("reject/{id}")]
     public async Task<IActionResult> RejectAccount(int id)
     {
-        var account = await _context.Accounts.FindAsync(id);
+        var account = await _context.Accounts.Include(a => a.Customer).FirstOrDefaultAsync(a => a.Id == id);
 
         if (account == null)
             return NotFound(new { message = "Account not found" });
+
+        if (account.Customer != null)
+        {
+            _context.Customers.Remove(account.Customer);
+        }
 
         _context.Accounts.Remove(account);
         await _context.SaveChangesAsync();

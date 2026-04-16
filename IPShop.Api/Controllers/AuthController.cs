@@ -96,6 +96,20 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Account approved successfully" });
     }
 
+    [HttpPatch("reject/{id}")]
+    public async Task<IActionResult> RejectAccount(int id)
+    {
+        var account = await _context.Accounts.FindAsync(id);
+
+        if (account == null)
+            return NotFound(new { message = "Account not found" });
+
+        _context.Accounts.Remove(account);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Account rejected and removed successfully" });
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAllAccounts()
     {

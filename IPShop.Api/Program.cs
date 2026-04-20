@@ -62,7 +62,7 @@ if (Directory.Exists(frontendPath))
     var rewriteOptions = new RewriteOptions()
         // Changed it into a capture group to avoid repeating the code. If you add a new page remember to include it in the list.
         .AddRewrite(@"^(products|login)/?$", "src/pages/$1.html", skipRemainingRules: true)
-    .AddRewrite(@"^product-details(?:/(\d+))?/?$", "src/pages/product-details.html", skipRemainingRules: true);
+        .AddRewrite(@"^product-details(?:/(\d+))?/?$", "src/pages/product-details.html?id=$1", skipRemainingRules: true);
     app.UseRewriter(rewriteOptions);
 
     app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = frontendProvider });

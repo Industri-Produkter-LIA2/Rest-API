@@ -4,6 +4,7 @@ using IPShop.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
 using IPShop.Api.Models.Constants;
+using IPShop.Api.Dtos;
 
 namespace IPShop.Api.Controllers;
 
@@ -22,7 +23,9 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login(LoginRequest request)
     {
         var email = request.Email.Trim().ToLower();
-        var account = await _context.Accounts.FirstOrDefaultAsync(a => a.Email == email && a.Password == request.Password); // We need to encrypt passwords, but for now I'm leaving them plain text just whilst we're setting up and testing.
+        var account = await _context.Accounts
+            .Include(x => x.Customer)
+            .FirstOrDefaultAsync(a => a.Email == email && a.Password == request.Password); // We need to encrypt passwords, but for now I'm leaving them plain text just whilst we're setting up and testing.
 
         if (account == null)
             return Unauthorized(new { message = "Invalid email or password" });
@@ -30,9 +33,12 @@ public class AuthController : ControllerBase
         if (!account.IsApproved)
             return BadRequest(new { message = "Account not approved yet" });
 
+        var customer = account.Customer;
+
         return Ok(new
         {
             id = account.Id,
+            customerId = account.CustomerId,
             username = account.Username,
             email = account.Email,
             role = account.Role
@@ -94,5 +100,19 @@ public class AuthController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "Account approved successfully" });
+    }
+
+    [HttpPut("change-password")]
+    public async Task<IActionResult> ChangePassword([FromQuery]int id , ChangePasswordDto password)
+    {
+        var account = await _context.Accounts.FirstOrDefaultAsync(x => x.Id == id);
+        
+        if (account == null)
+            return NotFound(new { message = "Account not found" });
+
+        account.Password = password.NewPassword;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Account password changed successfully" });
     }
 }

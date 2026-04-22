@@ -52,7 +52,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-var frontendPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "Frontend"));
+var frontendPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "Frontend"));
+if (!Directory.Exists(frontendPath))
+{
+    frontendPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "Frontend"));
+}
 var frontendAvailable = false;
 if (Directory.Exists(frontendPath))
 {
@@ -62,7 +66,7 @@ if (Directory.Exists(frontendPath))
     // Sets new url to be just localhost:5088/products instead of localhost:5088/src/pages/products.html, because I changed the file structure in frontend and this looks cleaner
     var rewriteOptions = new RewriteOptions()
         // Changed it into a capture group to avoid repeating the code. If you add a new page remember to include it in the list.
-        .AddRewrite(@"^(products|login|register)/?$", "src/pages/$1.html", skipRemainingRules: true)
+        .AddRewrite(@"^(products|login|register|orders)/?$", "src/pages/$1.html", skipRemainingRules: true)
         .AddRewrite(@"^product-details(?:/(\d+))?/?$", "src/pages/product-details.html?id=$1", skipRemainingRules: true);
     app.UseRewriter(rewriteOptions);
 

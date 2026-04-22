@@ -65,7 +65,7 @@ public class AuthController : ControllerBase
 
         var account = new Account
         {
-            Email = request.Email.Trim().ToLower(),
+            Email = email,
             Username = request.Username,
             Password = request.Password,
             Role = Roles.Customer,
@@ -79,7 +79,7 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Registration successful, pending approval" });
     }
 
-    [HttpPost("approve/{id}")]
+    [HttpPatch("approve/{id}")]
     public async Task<IActionResult> ApproveAccount(int id)
     {
         var account = await _context.Accounts.FindAsync(id);
@@ -94,5 +94,63 @@ public class AuthController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "Account approved successfully" });
+    }
+
+    [HttpPatch("reject/{id}")]
+    public async Task<IActionResult> RejectAccount(int id)
+    {
+        var account = await _context.Accounts.Include(a => a.Customer).FirstOrDefaultAsync(a => a.Id == id);
+
+        if (account == null)
+            return NotFound(new { message = "Account not found" });
+
+        if (account.Customer != null)
+        {
+            _context.Customers.Remove(account.Customer);
+        }
+
+        _context.Accounts.Remove(account);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Account rejected and removed successfully" });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAllAccounts()
+    {
+        var accounts = await _context.Accounts
+            .Select(a => new AccountAdminDto
+            {
+                Id = a.Id,
+                Email = a.Email,
+                Username = a.Username,
+                Role = a.Role,
+                IsApproved = a.IsApproved,
+                CompanyName = a.Customer!.Name,
+                OrgNumber = a.Customer!.OrgNumber
+            })
+            .ToListAsync();
+
+        return Ok(accounts);
+    }
+
+    [HttpGet("pending")]
+    public async Task<IActionResult> GetPendingAccounts()
+    {
+        var accounts = await _context.Accounts
+            .Where(a => !a.IsApproved)
+            .Select(a => new AccountAdminDto
+            {
+                Id = a.Id,
+                Email = a.Email,
+                Username = a.Username,
+                Role = a.Role,
+                IsApproved = a.IsApproved,
+                CompanyName = a.Customer!.Name,
+                OrgNumber = a.Customer!.OrgNumber
+            })
+            .ToListAsync();
+
+        return Ok(accounts);
     }
 }

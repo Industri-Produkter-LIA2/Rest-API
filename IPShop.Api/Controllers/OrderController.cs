@@ -1,6 +1,7 @@
 using IPShop.Api.Data;
 using IPShop.Api.Dtos;
 using IPShop.Api.Models;
+using IPShop.Api.Models.Constants;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -95,7 +96,7 @@ public class OrderController : ControllerBase
             CustomerId = request.CustomerId,
             OrderNumber = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmssfff}",
             CreatedAtUtc = DateTime.UtcNow,
-            Status = "Pending"
+            Status = OrderStatuses.Behandlas
         };
 
         foreach (var item in request.Items)

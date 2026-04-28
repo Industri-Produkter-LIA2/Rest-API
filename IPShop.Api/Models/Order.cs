@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using IPShop.Api.Models.Constants;
 
 namespace IPShop.Api.Models;
 
@@ -21,7 +22,7 @@ public class Order
 
     [Required]
     [MaxLength(50)]
-    public string Status { get; set; } = "Pending";
+    public string Status { get; set; } = OrderStatuses.Behandlas;
 
     public List<OrderItem> Items { get; set; } = [];
 }

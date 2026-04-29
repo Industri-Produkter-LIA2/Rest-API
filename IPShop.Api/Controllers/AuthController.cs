@@ -33,6 +33,7 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             id = account.Id,
+            customerId = account.CustomerId,
             username = account.Username,
             email = account.Email,
             role = account.Role

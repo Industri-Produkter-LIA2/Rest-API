@@ -15,7 +15,6 @@ public class CustomerController : ControllerBase
         _context = context;
     }
 
-    // CREATE customer
     [HttpPost]
     public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
     {
@@ -25,7 +24,6 @@ public class CustomerController : ControllerBase
         return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
     }
 
-    // GET customer
     [HttpGet("{id}")]
     public async Task<ActionResult<Customer>> GetCustomer(int id)
     {
@@ -37,7 +35,6 @@ public class CustomerController : ControllerBase
         return customer;
     }
 
-    // UPDATE customer
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateCustomer(int id, Customer updatedCustomer)
     {
@@ -59,27 +56,5 @@ public class CustomerController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
-    }
-
-    // APPROVE customer (admin) - ONLY companies allowed
-    [HttpPut("{id}/approve")]
-    public async Task<IActionResult> ApproveCustomer(int id)
-    {
-        var customer = await _context.Customers.FindAsync(id);
-
-        if (customer == null)
-            return NotFound();
-
-        // 🔥 Företagskontroll (detta gör user story klar)
-        if (string.IsNullOrWhiteSpace(customer.Company))
-        {
-            return BadRequest("Endast företag får godkännas.");
-        }
-
-        customer.IsApproved = true;
-
-        await _context.SaveChangesAsync();
-
-        return Ok(customer);
     }
 }

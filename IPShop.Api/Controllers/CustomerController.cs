@@ -18,6 +18,12 @@ public class CustomerController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
     {
+        if (string.IsNullOrWhiteSpace(customer.Company) ||
+            string.IsNullOrWhiteSpace(customer.OrgNumber))
+        {
+            return BadRequest("Endast företag är tillåtna.");
+        }
+
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
@@ -40,6 +46,12 @@ public class CustomerController : ControllerBase
     {
         if (id != updatedCustomer.Id)
             return BadRequest();
+
+        if (string.IsNullOrWhiteSpace(updatedCustomer.Company) ||
+            string.IsNullOrWhiteSpace(updatedCustomer.OrgNumber))
+        {
+            return BadRequest("Endast företag är tillåtna.");
+        }
 
         var customer = await _context.Customers.FindAsync(id);
 

@@ -3,6 +3,7 @@ using System;
 using IPShop.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,85 +11,14 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IPShop.Api.Migrations
 {
     [DbContext(typeof(IPShopDbContext))]
-    partial class IPShopDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260326173707_addCartAndCartItemModels")]
+    partial class addCartAndCartItemModels
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.25");
-
-            modelBuilder.Entity("Customer", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Address")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Company")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("InvoiceAddress")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsApproved")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("OrgNumber")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Customers");
-                });
-
-            modelBuilder.Entity("IPShop.Api.Models.Account", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CustomerId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsApproved")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Password")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CustomerId");
-
-                    b.ToTable("Accounts");
-                });
 
             modelBuilder.Entity("IPShop.Api.Models.Cart", b =>
                 {
@@ -99,12 +29,7 @@ namespace IPShop.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CustomerId")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("CustomerId");
 
                     b.ToTable("Carts");
                 });
@@ -153,11 +78,6 @@ namespace IPShop.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -173,24 +93,6 @@ namespace IPShop.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Products");
-                });
-
-            modelBuilder.Entity("IPShop.Api.Models.Account", b =>
-                {
-                    b.HasOne("Customer", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId");
-
-                    b.Navigation("Customer");
-                });
-
-            modelBuilder.Entity("IPShop.Api.Models.Cart", b =>
-                {
-                    b.HasOne("Customer", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId");
-
-                    b.Navigation("Customer");
                 });
 
             modelBuilder.Entity("IPShop.Api.Models.CartItem", b =>

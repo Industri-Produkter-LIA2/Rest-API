@@ -69,7 +69,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-var frontendPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "Frontend"));
+var frontendPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "Frontend"));
+if (!Directory.Exists(frontendPath))
+{
+    frontendPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "Frontend"));
+}
 var frontendAvailable = false;
 if (Directory.Exists(frontendPath))
 {

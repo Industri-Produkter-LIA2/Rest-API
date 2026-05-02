@@ -6,6 +6,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.Rewrite;
 using IPShop.Api.Dtos;
 using IPShop.Api.Models.Constants;
+using Microsoft.Data.Sqlite;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,10 +39,26 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+
+// Use a more robust initialization approach
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<IPShopDbContext>();
-    dbContext.Database.Migrate();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        // Wipe the old database
+        //dbContext.Database.EnsureDeleted();
+
+        // Generate a fresh database based EXACTLY on your current C# models
+        //dbContext.Database.EnsureCreated();
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while creating the database");
+        throw;
+    }
 }
 
 app.UseCors("AllowFrontend");
@@ -61,9 +78,13 @@ if (Directory.Exists(frontendPath))
 
     // Sets new url to be just localhost:5088/products instead of localhost:5088/src/pages/products.html, because I changed the file structure in frontend and this looks cleaner
     var rewriteOptions = new RewriteOptions()
-        // Changed it into a capture group to avoid repeating the code. If you add a new page remember to include it in the list.
-        .AddRewrite(@"^(products|login|register)/?$", "src/pages/$1.html", skipRemainingRules: true)
-        .AddRewrite(@"^product-details(?:/(\d+))?/?$", "src/pages/product-details.html?id=$1", skipRemainingRules: true);
+    // Changed it into a capture group to avoid repeating the code. If you add a new page remember to include it in the list.
+    .AddRewrite(@"^(products|login|register)/?$", "src/pages/$1.html", skipRemainingRules: true)
+    .AddRewrite(@"^product-details(?:/(\d+))?/?$", "src/pages/product-details.html?id=$1", skipRemainingRules: true)
+    // Profile with optional ID
+    .AddRewrite(@"^profile(?:/(\d+))?/?$", "src/pages/profile.html?id=$1", skipRemainingRules: true)
+    .AddRewrite(@"^cart(?:/(\d+))?/?$", "src/pages/cart.html?id=$1", skipRemainingRules: true)
+    ;
     app.UseRewriter(rewriteOptions);
 
     app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = frontendProvider });

@@ -103,8 +103,13 @@ public class AuthController : ControllerBase
     }
 
     [HttpPut("change-password")]
-    public async Task<IActionResult> ChangePassword([FromQuery]int id , ChangePasswordDto password)
+    public async Task<IActionResult> ChangePassword([FromQuery] int id , ChangePasswordDto password)
     {
+        if (string.IsNullOrEmpty(password.NewPassword))
+        {
+            return BadRequest(new { message = "password is empty" });
+        }
+
         var account = await _context.Accounts.FirstOrDefaultAsync(x => x.Id == id);
         
         if (account == null)

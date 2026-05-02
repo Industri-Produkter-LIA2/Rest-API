@@ -1,5 +1,6 @@
 ﻿// Controllers/CartController.cs
 using IPShop.Api.Data;
+using IPShop.Api.Dtos;
 using IPShop.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,8 @@ public class CartController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CartResponse>> CreateCart([FromQuery] int? customerId)
     {
+        var customers = await _dbContext.Customers.ToListAsync();
+
         var cart = new Cart();
 
         if (customerId.HasValue)
@@ -48,15 +51,33 @@ public class CartController : ControllerBase
     [HttpGet("{cartId:guid}")]
     public async Task<ActionResult<Cart>> GetCart(Guid cartId)
     {
-        var cart = await _dbContext.Carts
-            .Include(c => c.Items)
-            .ThenInclude(i => i.Product)
-            .FirstOrDefaultAsync(c => c.Id == cartId);
 
-        if (cart == null)
+        var updatedCart = await _dbContext.Carts
+         .Include(c => c.Items)
+         .ThenInclude(i => i.Product) // This loads the product details
+         .Select(x => new CartDto
+         {
+             CustomerId = x.CustomerId,
+             CreatedAt = x.CreatedAt,
+             Id = x.Id,
+             Items = x.Items
+             .Select(a => new CartItemDto
+             {
+                 Id = a.Id,
+                 CartId = a.CartId,
+                 ProductId = a.ProductId,
+                 Quantity = a.Quantity,
+                 // YOU MUST ADD THESE TWO LINES FOR THE FRONTEND:
+                 ProductName = a.Product.Name,
+                 Price = a.Product.Price
+             }).ToList(),
+         })
+         .FirstOrDefaultAsync(c => c.Id == cartId);
+
+        if (updatedCart == null)
             return NotFound();
 
-        return Ok(cart);
+        return Ok(updatedCart);
     }
 
     // POST: api/cart/{cartId}/items
@@ -106,8 +127,16 @@ public class CartController : ControllerBase
         var updatedCart = await _dbContext.Carts
             .Include(c => c.Items)
             .ThenInclude(i => i.Product)
+            .Select(x => new CartDto
+            {
+                CustomerId = x.CustomerId,
+                CreatedAt = x.CreatedAt,
+                Id = x.Id,
+                Items = x.Items
+                .Select(a => new CartItemDto { Id = a.Id,CartId = a.CartId , ProductId = a.ProductId,Quantity = a.Quantity}).ToList(),
+            })
             .FirstOrDefaultAsync(c => c.Id == cartId);
-
+        
         return Ok(updatedCart);
     }
 
@@ -127,15 +156,16 @@ public class CartController : ControllerBase
         return NoContent();
     }
 
-    // PATCH: api/cart/{cartId}/items/{itemId}
-    [HttpPatch("{cartId:guid}/items/{itemId:int}")]
+    // 1. CHANGED: Renamed itemId to productId in the route
+    [HttpPatch("{cartId:guid}/items/{productId:int}")]
     public async Task<IActionResult> UpdateCartItemQuantity(
         Guid cartId,
-        int itemId,
+        int productId, // 2. CHANGED variable name
         [FromBody] UpdateCartItemQuantityRequest request)
     {
+        // 3. CHANGED: Search by ProductId instead of the cart item's Primary Key (i.Id)
         var item = await _dbContext.CartItems
-            .FirstOrDefaultAsync(i => i.Id == itemId && i.CartId == cartId);
+            .FirstOrDefaultAsync(i => i.ProductId == productId && i.CartId == cartId);
 
         if (item == null)
             return NotFound(new { message = "Cart item not found" });
@@ -144,11 +174,11 @@ public class CartController : ControllerBase
             return BadRequest(new { message = "Quantity must be greater than 0" });
 
         item.Quantity = request.Quantity;
+        
         await _dbContext.SaveChangesAsync();
 
-        return NoContent();
+        return NoContent(); // 204 Success!
     }
-
     // DELETE: api/cart/{cartId}
     [HttpDelete("{cartId:guid}")]
     public async Task<IActionResult> ClearCart(Guid cartId)
@@ -164,6 +194,60 @@ public class CartController : ControllerBase
         await _dbContext.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    [HttpGet("user/{id}")]
+    public async Task<IActionResult> GetUserCart(int id)
+    {
+        // 1. Verify customer exists (AnyAsync is much faster than FindAsync if we only need to check existence)
+        var customerExists = await _dbContext.Customers.AnyAsync(c => c.Id == id);
+        if (!customerExists)
+            return NotFound(new { message = $"Customer {id} not found" });
+
+        // 2. Query the database and map directly to the DTO in one step
+        var cartDto = await _dbContext.Carts
+            .Include(c => c.Items)
+            .ThenInclude(c => c.Product)
+            .Where(x => x.CustomerId == id)
+            .Select(x => new CartDto
+            {
+                Id = x.Id,
+                CustomerId = x.CustomerId,
+                CreatedAt = x.CreatedAt,
+                Items = x.Items.Select(a => new CartItemDto
+                {
+                    Id = a.Id,
+                    CartId = a.CartId,
+                    ProductId = a.ProductId,
+                    ProductName = a.Product.Name,
+                    Price = a.Product.Price, // MUST INCLUDE PRICE FOR FRONTEND MATH!
+                    Quantity = a.Quantity
+                }).ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        // 3. If the cart exists, return it immediately
+        if (cartDto != null)
+            return Ok(cartDto);
+
+        // 4. If it does NOT exist, create it
+        var newCart = new Cart
+        {
+            CustomerId = id,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.Carts.Add(newCart);
+        await _dbContext.SaveChangesAsync();
+
+        // 5. Instantly return a new DTO (No need to query the database again since it's empty!)
+        return Ok(new CartDto
+        {
+            Id = newCart.Id,
+            CustomerId = newCart.CustomerId,
+            CreatedAt = newCart.CreatedAt,
+            Items = new List<CartItemDto>()
+        });
     }
 }
 

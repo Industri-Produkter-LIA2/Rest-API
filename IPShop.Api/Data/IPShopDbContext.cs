@@ -15,6 +15,7 @@ public class IPShopDbContext(DbContextOptions<IPShopDbContext> options) : DbCont
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderNotification> OrderNotifications => Set<OrderNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

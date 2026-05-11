@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using IPShop.Api.Data;
 using IPShop.Api.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
 using IPShop.Api.Models.Constants;
 using IPShop.Api.Dtos;
 

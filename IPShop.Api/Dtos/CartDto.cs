@@ -8,8 +8,8 @@ public class CartDto
     public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public List<CartItemDto> Items { get; set; } = new();
-    public int? CustomerId { get; set; }
 }
+
 public class AddToCartRequest
 {
     public int ProductId { get; set; }

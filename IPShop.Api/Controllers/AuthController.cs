@@ -177,4 +177,4 @@ public class AuthController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "Account password changed successfully" });
-}
+}}

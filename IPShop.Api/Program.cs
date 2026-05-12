@@ -88,6 +88,7 @@ if (Directory.Exists(frontendPath))
     // Profile with optional ID
     .AddRewrite(@"^profile(?:/(\d+))?/?$", "src/pages/profile.html?id=$1", skipRemainingRules: true)
     .AddRewrite(@"^cart(?:/(\d+))?/?$", "src/pages/cart.html?id=$1", skipRemainingRules: true)
+    .AddRewrite(@"^orders/?$", "src/pages/orders.html", skipRemainingRules: true)
     ;
     app.UseRewriter(rewriteOptions);
 

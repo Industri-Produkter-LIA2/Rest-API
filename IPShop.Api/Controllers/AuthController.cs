@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using IPShop.Api.Data;
 using IPShop.Api.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
 using IPShop.Api.Models.Constants;
 using IPShop.Api.Dtos;
 
@@ -101,7 +100,7 @@ public class AuthController : ControllerBase
 
         return Ok(new { message = "Account approved successfully" });
     }
-    
+
     [HttpPatch("reject/{id}")]
     public async Task<IActionResult> RejectAccount(int id)
     {
@@ -159,9 +158,9 @@ public class AuthController : ControllerBase
 
         return Ok(accounts);
     }
-    
+
     [HttpPut("change-password")]
-    public async Task<IActionResult> ChangePassword([FromQuery] int id , ChangePasswordDto password)
+    public async Task<IActionResult> ChangePassword([FromQuery] int id, ChangePasswordDto password)
     {
         if (string.IsNullOrEmpty(password.NewPassword))
         {
@@ -169,7 +168,7 @@ public class AuthController : ControllerBase
         }
 
         var account = await _context.Accounts.FirstOrDefaultAsync(x => x.Id == id);
-        
+
         if (account == null)
             return NotFound(new { message = "Account not found" });
 
@@ -177,4 +176,5 @@ public class AuthController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "Account password changed successfully" });
+    }
 }

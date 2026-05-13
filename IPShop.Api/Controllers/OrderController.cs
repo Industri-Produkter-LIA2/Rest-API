@@ -71,6 +71,32 @@ public class OrderController : ControllerBase
         return Ok(orders.Select(MapToOrderDto));
     }
 
+    // GET: api/order/customer/{customerId}/updates
+    [HttpGet("customer/{customerId:int}/updates")]
+    public async Task<ActionResult<IEnumerable<OrderNotificationDto>>> GetOrderUpdatesByCustomer(int customerId)
+    {
+        var customerExists = await _context.Customers.AnyAsync(c => c.Id == customerId);
+        if (!customerExists)
+        {
+            return NotFound(new { message = $"Customer with ID {customerId} not found." });
+        }
+
+        var updates = await _context.OrderNotifications
+            .Where(n => n.CustomerId == customerId)
+            .OrderByDescending(n => n.CreatedAtUtc)
+            .Select(n => new OrderNotificationDto
+            {
+                Id = n.Id,
+                OrderId = n.OrderId,
+                CustomerId = n.CustomerId,
+                Message = n.Message,
+                CreatedAtUtc = n.CreatedAtUtc
+            })
+            .ToListAsync();
+
+        return Ok(updates);
+    }
+
     // POST: api/order
     [HttpPost]
     public async Task<ActionResult<OrderDto>> CreateOrder([FromBody] CreateOrderDto request)
@@ -123,6 +149,76 @@ public class OrderController : ControllerBase
             .FirstAsync(o => o.Id == order.Id);
 
         return CreatedAtAction(nameof(GetOrder), new { id = createdOrder.Id }, MapToOrderDto(createdOrder));
+    }
+
+    // PATCH: api/order/{id}/status
+    [HttpPatch("{id:int}/status")]
+    public async Task<ActionResult<OrderNotificationDto>> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusDto request)
+    {
+        if (!OrderStatuses.IsValid(request.Status))
+        {
+            return BadRequest(new
+            {
+                message = "Invalid order status.",
+                validStatuses = OrderStatuses.All
+            });
+        }
+
+        var order = await _context.Orders
+            .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (order == null)
+        {
+            return NotFound(new { message = $"Order with ID {id} not found." });
+        }
+
+        var normalizedStatus = OrderStatuses.All
+            .First(s => s.Equals(request.Status.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        var message = string.IsNullOrWhiteSpace(request.Message)
+            ? BuildDefaultStatusMessage(order.OrderNumber, normalizedStatus)
+            : request.Message.Trim();
+
+        var notification = await UpdateOrderStatusAndCreateNotification(order, normalizedStatus, message);
+
+        return Ok(new OrderNotificationDto
+        {
+            Id = notification.Id,
+            OrderId = notification.OrderId,
+            CustomerId = notification.CustomerId,
+            Message = notification.Message,
+            CreatedAtUtc = notification.CreatedAtUtc
+        });
+    }
+
+    private async Task<OrderNotification> UpdateOrderStatusAndCreateNotification(Order order, string newStatus, string message)
+    {
+        order.Status = newStatus;
+
+        var notification = new OrderNotification
+        {
+            OrderId = order.Id,
+            CustomerId = order.CustomerId,
+            Message = message,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        _context.OrderNotifications.Add(notification);
+        await _context.SaveChangesAsync();
+
+        return notification;
+    }
+
+    private static string BuildDefaultStatusMessage(string orderNumber, string status)
+    {
+        return status switch
+        {
+            var s when s == OrderStatuses.Behandlas => $"Din beställning {orderNumber} behandlas nu.",
+            var s when s == OrderStatuses.Levereras => $"Din beställning {orderNumber} är på väg till butiken.",
+            var s when s == OrderStatuses.Levererad => $"Din beställning {orderNumber} är redo för upphämtning.",
+            var s when s == OrderStatuses.Fakturerad => $"Din beställning {orderNumber} har fakturerats.",
+            _ => $"Status för beställning {orderNumber} uppdaterad till {status}."
+        };
     }
 
     private static OrderDto MapToOrderDto(Order order)

@@ -22,17 +22,16 @@ public class CartController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CartResponse>> CreateCart([FromQuery] int? customerId)
     {
-        var customers = await _dbContext.Customers.ToListAsync();
-
         var cart = new Cart();
 
         if (customerId.HasValue)
         {
-            var customer = await _dbContext.Customers.FindAsync(customerId.Value);
+            var customer = await _dbContext.Customers.FindAsync(customerId);
             if (customer == null)
                 return NotFound(new { message = "Customer not found" });
-
-            cart.CustomerId = customerId.Value;
+            
+            // cart.CustomerId = customerId.Value;
+            cart.Customer = customer;
         }
 
         _dbContext.Carts.Add(cart);
@@ -42,7 +41,7 @@ public class CartController : ControllerBase
         {
             Id = cart.Id,
             CreatedAt = cart.CreatedAt,
-            CustomerId = cart.CustomerId,
+            CustomerId = cart.Customer!.Id,
             Items = cart.Items ?? new List<CartItem>()
         });
     }
@@ -57,7 +56,6 @@ public class CartController : ControllerBase
          .ThenInclude(i => i.Product) // This loads the product details
          .Select(x => new CartDto
          {
-             CustomerId = x.CustomerId,
              CreatedAt = x.CreatedAt,
              Id = x.Id,
              Items = x.Items
@@ -129,7 +127,6 @@ public class CartController : ControllerBase
             .ThenInclude(i => i.Product)
             .Select(x => new CartDto
             {
-                CustomerId = x.CustomerId,
                 CreatedAt = x.CreatedAt,
                 Id = x.Id,
                 Items = x.Items
@@ -208,11 +205,9 @@ public class CartController : ControllerBase
         var cartDto = await _dbContext.Carts
             .Include(c => c.Items)
             .ThenInclude(c => c.Product)
-            .Where(x => x.CustomerId == id)
             .Select(x => new CartDto
             {
                 Id = x.Id,
-                CustomerId = x.CustomerId,
                 CreatedAt = x.CreatedAt,
                 Items = x.Items.Select(a => new CartItemDto
                 {
@@ -233,7 +228,7 @@ public class CartController : ControllerBase
         // 4. If it does NOT exist, create it
         var newCart = new Cart
         {
-            CustomerId = id,
+            Customer = null, // We will set the customer relationship in a moment
             CreatedAt = DateTime.UtcNow
         };
 
@@ -244,7 +239,6 @@ public class CartController : ControllerBase
         return Ok(new CartDto
         {
             Id = newCart.Id,
-            CustomerId = newCart.CustomerId,
             CreatedAt = newCart.CreatedAt,
             Items = new List<CartItemDto>()
         });

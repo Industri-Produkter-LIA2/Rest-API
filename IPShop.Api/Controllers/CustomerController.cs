@@ -15,17 +15,21 @@ public class CustomerController : ControllerBase
         _context = context;
     }
 
-    // CREATE customer
     [HttpPost]
     public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
     {
+        if (string.IsNullOrWhiteSpace(customer.Company) ||
+            string.IsNullOrWhiteSpace(customer.OrgNumber))
+        {
+            return BadRequest("Endast företag är tillåtna.");
+        }
+
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
     }
 
-    // GET customer
     [HttpGet("{id}")]
     public async Task<ActionResult<Customer>> GetCustomer(int id)
     {
@@ -37,12 +41,17 @@ public class CustomerController : ControllerBase
         return customer;
     }
 
-    // UPDATE customer
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateCustomer(int id, Customer updatedCustomer)
     {
         if (id != updatedCustomer.Id)
             return BadRequest();
+
+        if (string.IsNullOrWhiteSpace(updatedCustomer.Company) ||
+            string.IsNullOrWhiteSpace(updatedCustomer.OrgNumber))
+        {
+            return BadRequest("Endast företag är tillåtna.");
+        }
 
         var customer = await _context.Customers.FindAsync(id);
 
@@ -59,25 +68,5 @@ public class CustomerController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
-    }
-
-    [HttpPut("{id}/approve")]
-    public async Task<IActionResult> ApproveCustomer(int id)
-    {
-        var customer = await _context.Customers.FindAsync(id);
-
-        if (customer == null)
-            return NotFound();
-
-        if (string.IsNullOrWhiteSpace(customer.Company))
-        {
-            return BadRequest("Endast företag får godkännas.");
-        }
-
-        customer.IsApproved = true;
-
-        await _context.SaveChangesAsync();
-
-        return Ok(customer);
     }
 }

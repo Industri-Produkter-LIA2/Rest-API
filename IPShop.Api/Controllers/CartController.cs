@@ -1,5 +1,4 @@
-﻿// Controllers/CartController.cs
-using IPShop.Api.Data;
+﻿using IPShop.Api.Data;
 using IPShop.Api.Dtos;
 using IPShop.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -196,15 +195,17 @@ public class CartController : ControllerBase
     [HttpGet("user/{id}")]
     public async Task<IActionResult> GetUserCart(int id)
     {
-        // 1. Verify customer exists (AnyAsync is much faster than FindAsync if we only need to check existence)
+        // 1. Verify customer exists
         var customerExists = await _dbContext.Customers.AnyAsync(c => c.Id == id);
         if (!customerExists)
+        {
             return NotFound(new { message = $"Customer {id} not found" });
+        }
 
-        // 2. Query the database and map directly to the DTO in one step
+        // 2. Query the database and map directly to the DTO
+        // Note: EF Core ignores .Include() when using .Select(), so it was removed to clean up the code.
         var cartDto = await _dbContext.Carts
-            .Include(c => c.Items)
-            .ThenInclude(c => c.Product)
+            .Where(c => c.CustomerId == id) // CRITICAL FIX: Filter by the specific customer's ID
             .Select(x => new CartDto
             {
                 Id = x.Id,
@@ -215,7 +216,7 @@ public class CartController : ControllerBase
                     CartId = a.CartId,
                     ProductId = a.ProductId,
                     ProductName = a.Product.Name,
-                    Price = a.Product.Price, // MUST INCLUDE PRICE FOR FRONTEND MATH!
+                    Price = a.Product.Price,
                     Quantity = a.Quantity
                 }).ToList()
             })
@@ -223,19 +224,21 @@ public class CartController : ControllerBase
 
         // 3. If the cart exists, return it immediately
         if (cartDto != null)
+        {
             return Ok(cartDto);
+        }
 
-        // 4. If it does NOT exist, create it
+        // 4. If it does NOT exist, create it and link it to the customer
         var newCart = new Cart
         {
-            Customer = null, // We will set the customer relationship in a moment
+            CustomerId = id, // CRITICAL FIX: Actually link the cart to the user!
             CreatedAt = DateTime.UtcNow
         };
 
         _dbContext.Carts.Add(newCart);
         await _dbContext.SaveChangesAsync();
 
-        // 5. Instantly return a new DTO (No need to query the database again since it's empty!)
+        // 5. Instantly return a new DTO (No need to query the database again)
         return Ok(new CartDto
         {
             Id = newCart.Id,
@@ -243,24 +246,4 @@ public class CartController : ControllerBase
             Items = new List<CartItemDto>()
         });
     }
-}
-
-// Request/Response Models
-public class CartResponse
-{
-    public Guid Id { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public int? CustomerId { get; set; }
-    public ICollection<CartItem> Items { get; set; } = new List<CartItem>();
-}
-
-public class AddToCartRequest
-{
-    public int ProductId { get; set; }
-    public int Quantity { get; set; }
-}
-
-public class UpdateCartItemQuantityRequest
-{
-    public int Quantity { get; set; }
 }

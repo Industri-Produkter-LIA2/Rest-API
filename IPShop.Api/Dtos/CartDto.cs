@@ -15,6 +15,17 @@ public class AddToCartRequest
     public int ProductId { get; set; }
     public int Quantity { get; set; }
 }
+public class CartResponse
+{
+    public Guid Id { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public int? CustomerId { get; set; }
+    public ICollection<CartItem> Items { get; set; } = new List<CartItem>();
+}
+public class UpdateCartItemQuantityRequest
+{
+    public int Quantity { get; set; }
+}
 
 public class CartItemDto
 {

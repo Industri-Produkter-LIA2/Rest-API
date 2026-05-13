@@ -1,5 +1,4 @@
-﻿// Controllers/ProductsController.cs (Extended Version)
-using IPShop.Api.Data;
+﻿using IPShop.Api.Data;
 using IPShop.Api.Dtos;
 using IPShop.Api.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -18,9 +17,10 @@ public class ProductsController : ControllerBase
         _dbContext = dbContext;
     }
 
-    // GET: api/products
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Product>>> GetProducts(
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<object>> GetProducts(
         [FromQuery] string? articleNumber,
         [FromQuery] string? name,
         [FromQuery] string? category,
@@ -30,39 +30,24 @@ public class ProductsController : ControllerBase
         [FromQuery] int pageSize = 10)
     {
         if (minPrice.HasValue && maxPrice.HasValue && minPrice > maxPrice)
-        {
             return BadRequest(new { message = "minPrice cannot be greater than maxPrice." });
-        }
 
         var query = _dbContext.Products.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(articleNumber))
-        {
-            var value = articleNumber.Trim();
-            query = query.Where(p => p.ArticleNumber.Contains(value));
-        }
+            query = query.Where(p => p.ArticleNumber.Contains(articleNumber.Trim()));
 
         if (!string.IsNullOrWhiteSpace(name))
-        {
-            var value = name.Trim();
-            query = query.Where(p => p.Name.Contains(value));
-        }
+            query = query.Where(p => p.Name.Contains(name.Trim()));
 
         if (!string.IsNullOrWhiteSpace(category))
-        {
-            var value = category.Trim();
-            query = query.Where(p => p.Category.Contains(value));
-        }
+            query = query.Where(p => p.Category.Contains(category.Trim()));
 
         if (minPrice.HasValue)
-        {
             query = query.Where(p => p.Price >= minPrice.Value);
-        }
 
         if (maxPrice.HasValue)
-        {
             query = query.Where(p => p.Price <= maxPrice.Value);
-        }
 
         var totalCount = await query.CountAsync();
 
@@ -82,31 +67,26 @@ public class ProductsController : ControllerBase
         });
     }
 
-    // GET: api/products/{id}
     [HttpGet("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Product>> GetProduct(int id)
     {
         var product = await _dbContext.Products.FindAsync(id);
 
         if (product == null)
-        {
             return NotFound(new { message = $"Product with ID {id} not found." });
-        }
 
         return Ok(product);
     }
 
-    // POST: api/products
     [HttpPost]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<Product>> CreateProduct([FromBody] CreateProductDto createDto)
     {
-        var articleExists = await _dbContext.Products
-            .AnyAsync(p => p.ArticleNumber == createDto.ArticleNumber);
-
-        if (articleExists)
-        {
+        if (!await IsArticleNumberUniqueAsync(createDto.ArticleNumber))
             return Conflict(new { message = "ArticleNumber already exists." });
-        }
 
         var product = new Product
         {
@@ -124,40 +104,30 @@ public class ProductsController : ControllerBase
         return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
     }
 
-    // PUT: api/products/{id}
     [HttpPut("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateProduct(int id, [FromBody] UpdateProductDto updateDto)
     {
         var existingProduct = await _dbContext.Products.FindAsync(id);
         if (existingProduct == null)
-        {
             return NotFound(new { message = $"Product with ID {id} not found." });
-        }
 
-        // Check if article number is changed and if new one already exists
-        if (existingProduct.ArticleNumber != updateDto.ArticleNumber)
+        if (existingProduct.ArticleNumber != updateDto.ArticleNumber &&
+            !await IsArticleNumberUniqueAsync(updateDto.ArticleNumber, id))
         {
-            var articleExists = await _dbContext.Products
-                .AnyAsync(p => p.ArticleNumber == updateDto.ArticleNumber && p.Id != id);
-
-            if (articleExists)
-            {
-                return Conflict(new { message = "ArticleNumber already exists." });
-            }
+            return Conflict(new { message = "ArticleNumber already exists." });
         }
 
-        // Update properties
         existingProduct.ArticleNumber = updateDto.ArticleNumber;
         existingProduct.Name = updateDto.Name;
         existingProduct.Description = updateDto.Description;
         existingProduct.Price = updateDto.Price;
         existingProduct.Category = updateDto.Category;
 
-        // Handle image upload if new file is provided
         if (!string.IsNullOrWhiteSpace(updateDto.ImageUrl))
-        {
             existingProduct.ImageUrl = updateDto.ImageUrl;
-        }
 
         try
         {
@@ -165,73 +135,51 @@ public class ProductsController : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!ProductExists(id))
-            {
-                return NotFound();
-            }
-            else
-            {
-                throw;
-            }
+            if (!ProductExists(id)) return NotFound();
+            throw;
         }
 
         return NoContent();
     }
 
-    // PATCH: api/products/{id}
     [HttpPatch("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> PatchProduct(int id, [FromBody] PatchProductDto patchDto)
     {
         var product = await _dbContext.Products.FindAsync(id);
         if (product == null)
-        {
             return NotFound(new { message = $"Product with ID {id} not found." });
-        }
 
-        // Update only provided fields
         if (patchDto.ArticleNumber != null)
         {
-            if (product.ArticleNumber != patchDto.ArticleNumber)
+            if (product.ArticleNumber != patchDto.ArticleNumber &&
+                !await IsArticleNumberUniqueAsync(patchDto.ArticleNumber, id))
             {
-                var articleExists = await _dbContext.Products
-                    .AnyAsync(p => p.ArticleNumber == patchDto.ArticleNumber && p.Id != id);
-
-                if (articleExists)
-                {
-                    return Conflict(new { message = "ArticleNumber already exists." });
-                }
+                return Conflict(new { message = "ArticleNumber already exists." });
             }
             product.ArticleNumber = patchDto.ArticleNumber;
         }
 
-        if (patchDto.Name != null)
-            product.Name = patchDto.Name;
-
-        if (patchDto.Description != null)
-            product.Description = patchDto.Description;
-
-        if (patchDto.Price.HasValue)
-            product.Price = patchDto.Price.Value;
-
-        if (patchDto.Category != null)
-            product.Category = patchDto.Category;
-
-        if (patchDto.ImageUrl != null)
-            product.ImageUrl = patchDto.ImageUrl;
+        if (patchDto.Name != null) product.Name = patchDto.Name;
+        if (patchDto.Description != null) product.Description = patchDto.Description;
+        if (patchDto.Price.HasValue) product.Price = patchDto.Price.Value;
+        if (patchDto.Category != null) product.Category = patchDto.Category;
+        if (patchDto.ImageUrl != null) product.ImageUrl = patchDto.ImageUrl;
 
         await _dbContext.SaveChangesAsync();
         return NoContent();
     }
 
-    // DELETE: api/products/{id}
     [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteProduct(int id)
     {
         var product = await _dbContext.Products.FindAsync(id);
         if (product == null)
-        {
             return NotFound(new { message = $"Product with ID {id} not found." });
-        }
 
         _dbContext.Products.Remove(product);
         await _dbContext.SaveChangesAsync();
@@ -239,8 +187,8 @@ public class ProductsController : ControllerBase
         return NoContent();
     }
 
-    // GET: api/products/categories
     [HttpGet("categories")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<string>>> GetCategories()
     {
         var categories = await _dbContext.Products
@@ -252,23 +200,38 @@ public class ProductsController : ControllerBase
         return Ok(categories);
     }
 
-    // GET: api/products/articlenumber/{articleNumber}
     [HttpGet("articlenumber/{articleNumber}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Product>> GetProductByArticleNumber(string articleNumber)
     {
         var product = await _dbContext.Products
             .FirstOrDefaultAsync(p => p.ArticleNumber == articleNumber);
 
         if (product == null)
-        {
             return NotFound(new { message = $"Product with article number {articleNumber} not found." });
-        }
 
         return Ok(product);
     }
 
+    // --- Private Helpers ---
+
     private bool ProductExists(int id)
     {
         return _dbContext.Products.Any(e => e.Id == id);
+    }
+
+    /// <summary>
+    /// Checks if an article number is unique across the database.
+    /// Optionally excludes a specific Product ID from the check (useful for PUT/PATCH).
+    /// </summary>
+    private async Task<bool> IsArticleNumberUniqueAsync(string articleNumber, int? excludeId = null)
+    {
+        var query = _dbContext.Products.Where(p => p.ArticleNumber == articleNumber);
+
+        if (excludeId.HasValue)
+            query = query.Where(p => p.Id != excludeId.Value);
+
+        return !await query.AnyAsync();
     }
 }

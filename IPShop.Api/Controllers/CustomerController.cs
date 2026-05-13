@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using IPShop.Api.Data;
 using IPShop.Api.Models;
 
@@ -16,13 +17,12 @@ public class CustomerController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
     {
-        if (string.IsNullOrWhiteSpace(customer.Company) ||
-            string.IsNullOrWhiteSpace(customer.OrgNumber))
-        {
-            return BadRequest("Endast företag är tillåtna.");
-        }
+        if (!IsBusinessCustomer(customer))
+            return BadRequest(new { message = "Endast företag är tillåtna." });
 
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
@@ -31,36 +31,37 @@ public class CustomerController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Customer>> GetCustomer(int id)
     {
         var customer = await _context.Customers.FindAsync(id);
 
         if (customer == null)
-            return NotFound();
+            return NotFound(new { message = $"Customer with ID {id} was not found." });
 
-        return customer;
+        return Ok(customer);
     }
 
     [HttpPut("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateCustomer(int id, Customer updatedCustomer)
     {
         if (id != updatedCustomer.Id)
-            return BadRequest();
+            return BadRequest(new { message = "URL ID and Customer ID mismatch." });
 
-        if (string.IsNullOrWhiteSpace(updatedCustomer.Company) ||
-            string.IsNullOrWhiteSpace(updatedCustomer.OrgNumber))
-        {
-            return BadRequest("Endast företag är tillåtna.");
-        }
+        if (!IsBusinessCustomer(updatedCustomer))
+            return BadRequest(new { message = "Endast företag är tillåtna." });
 
         var customer = await _context.Customers.FindAsync(id);
 
         if (customer == null)
-            return NotFound();
+            return NotFound(new { message = $"Customer with ID {id} was not found." });
 
-        customer.Name = updatedCustomer.Name;
-        customer.Company = updatedCustomer.Company;
-        customer.Email = updatedCustomer.Email;
+        // Map updated properties
+        customer.CompanyName = updatedCustomer.CompanyName;
         customer.OrgNumber = updatedCustomer.OrgNumber;
         customer.Address = updatedCustomer.Address;
         customer.InvoiceAddress = updatedCustomer.InvoiceAddress;
@@ -68,5 +69,14 @@ public class CustomerController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Helper method to validate that the customer has the required business fields.
+    /// </summary>
+    private static bool IsBusinessCustomer(Customer customer)
+    {
+        return !string.IsNullOrWhiteSpace(customer.CompanyName) &&
+               !string.IsNullOrWhiteSpace(customer.OrgNumber);
     }
 }

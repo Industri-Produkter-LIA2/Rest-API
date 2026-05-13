@@ -119,7 +119,7 @@ namespace IPShop.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Customers");
+                    b.ToTable("Customers", (string)null);
                 });
 
             modelBuilder.Entity("IPShop.Api.Models.Order", b =>
@@ -204,6 +204,10 @@ namespace IPShop.Api.Migrations
                     b.Property<int>("OrderId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
@@ -233,11 +237,6 @@ namespace IPShop.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -264,7 +263,7 @@ namespace IPShop.Api.Migrations
                     b.Navigation("Customer");
                 });
 
-            modelBuilder.Entity("IPShop.Api.Models.Cart", b =>
+            modelBuilder.Entity("IPShop.Api.Models.Order", b =>
                 {
                     b.HasOne("IPShop.Api.Models.Customer", "Customer")
                         .WithMany()
@@ -275,11 +274,11 @@ namespace IPShop.Api.Migrations
                     b.Navigation("Customer");
                 });
 
-            modelBuilder.Entity("IPShop.Api.Models.CartItem", b =>
+            modelBuilder.Entity("IPShop.Api.Models.OrderItem", b =>
                 {
-                    b.HasOne("IPShop.Api.Models.Cart", "Cart")
+                    b.HasOne("IPShop.Api.Models.Order", "Order")
                         .WithMany("Items")
-                        .HasForeignKey("CartId")
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

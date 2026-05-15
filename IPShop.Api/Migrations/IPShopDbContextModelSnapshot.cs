@@ -47,7 +47,8 @@ namespace IPShop.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CustomerId");
+                    b.HasIndex("CustomerId")
+                        .IsUnique();
 
                     b.ToTable("Accounts");
                 });
@@ -119,7 +120,7 @@ namespace IPShop.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Customers", (string)null);
+                    b.ToTable("Customers");
                 });
 
             modelBuilder.Entity("IPShop.Api.Models.Order", b =>
@@ -204,10 +205,6 @@ namespace IPShop.Api.Migrations
                     b.Property<int>("OrderId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
@@ -237,6 +234,11 @@ namespace IPShop.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -257,13 +259,13 @@ namespace IPShop.Api.Migrations
             modelBuilder.Entity("IPShop.Api.Models.Account", b =>
                 {
                     b.HasOne("IPShop.Api.Models.Customer", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId");
+                        .WithOne("Account")
+                        .HasForeignKey("IPShop.Api.Models.Account", "CustomerId");
 
                     b.Navigation("Customer");
                 });
 
-            modelBuilder.Entity("IPShop.Api.Models.Order", b =>
+            modelBuilder.Entity("IPShop.Api.Models.Cart", b =>
                 {
                     b.HasOne("IPShop.Api.Models.Customer", "Customer")
                         .WithMany()
@@ -274,11 +276,11 @@ namespace IPShop.Api.Migrations
                     b.Navigation("Customer");
                 });
 
-            modelBuilder.Entity("IPShop.Api.Models.OrderItem", b =>
+            modelBuilder.Entity("IPShop.Api.Models.CartItem", b =>
                 {
-                    b.HasOne("IPShop.Api.Models.Order", "Order")
+                    b.HasOne("IPShop.Api.Models.Cart", "Cart")
                         .WithMany("Items")
-                        .HasForeignKey("OrderId")
+                        .HasForeignKey("CartId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -345,6 +347,11 @@ namespace IPShop.Api.Migrations
             modelBuilder.Entity("IPShop.Api.Models.Cart", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("IPShop.Api.Models.Customer", b =>
+                {
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("IPShop.Api.Models.Order", b =>

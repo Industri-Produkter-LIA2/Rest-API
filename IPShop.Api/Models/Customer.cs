@@ -13,5 +13,6 @@ public class Customer
     public string Address { get; set; } = string.Empty;
     public string InvoiceAddress { get; set; } = string.Empty;
 
+    public Account? Account { get; set; }
     //public bool IsApproved { get; set; } = false;
 }

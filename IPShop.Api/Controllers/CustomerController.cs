@@ -36,8 +36,8 @@ public class CustomerController : ControllerBase
     public async Task<IActionResult> GetCustomerList()
     {
         var rows = await _context.Customers
-            .OrderBy(c => c.Name)
-            .Select(c => new { c.Id, c.Name, c.Company, c.Email, c.OrgNumber })
+            .OrderBy(c => c.CompanyName)
+            .Select(c => new { c.Id, Username = c.Account != null ? c.Account.Username : null, c.CompanyName, Email = c.Account != null ? c.Account.Email : null, c.OrgNumber })
             .ToListAsync();
 
         return Ok(rows);

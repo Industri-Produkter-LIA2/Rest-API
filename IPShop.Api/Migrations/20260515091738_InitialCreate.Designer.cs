@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IPShop.Api.Migrations
 {
     [DbContext(typeof(IPShopDbContext))]
-    [Migration("20260513211253_cleanCustomerModel")]
-    partial class cleanCustomerModel
+    [Migration("20260515091738_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -50,7 +50,8 @@ namespace IPShop.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CustomerId");
+                    b.HasIndex("CustomerId")
+                        .IsUnique();
 
                     b.ToTable("Accounts");
                 });
@@ -261,8 +262,8 @@ namespace IPShop.Api.Migrations
             modelBuilder.Entity("IPShop.Api.Models.Account", b =>
                 {
                     b.HasOne("IPShop.Api.Models.Customer", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId");
+                        .WithOne("Account")
+                        .HasForeignKey("IPShop.Api.Models.Account", "CustomerId");
 
                     b.Navigation("Customer");
                 });
@@ -349,6 +350,11 @@ namespace IPShop.Api.Migrations
             modelBuilder.Entity("IPShop.Api.Models.Cart", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("IPShop.Api.Models.Customer", b =>
+                {
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("IPShop.Api.Models.Order", b =>

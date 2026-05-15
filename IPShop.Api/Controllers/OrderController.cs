@@ -228,7 +228,7 @@ public class OrderController : ControllerBase
             Id = order.Id,
             OrderNumber = order.OrderNumber,
             CustomerId = order.CustomerId,
-            CustomerName = order.Customer?.Name ?? string.Empty,
+            CustomerName = order.Customer?.CompanyName ?? string.Empty,
             CreatedAtUtc = order.CreatedAtUtc,
             TotalAmount = order.TotalAmount,
             Status = order.Status,

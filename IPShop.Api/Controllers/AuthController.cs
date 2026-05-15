@@ -58,11 +58,11 @@ public class AuthController : ControllerBase
 
         var customer = new Customer // Address/Invoice address are not being saved on registration, they should be added in the customer details page after approval to avoid unnecessary complexity.
         {
-            Name = request.CompanyName,
+            CompanyName = request.CompanyName,
             OrgNumber = request.OrgNumber,
 
-            Email = email, // Email is currently being duplicated in customer and account, this one should realistically be removed, but I'm keeping it for now.
-            IsApproved = false // Also currently duplicated, is again just here temporarily so the project doesn't break.
+            //Email = email, // Email is currently being duplicated in customer and account, this one should realistically be removed, but I'm keeping it for now.
+            //IsApproved = false // Also currently duplicated, is again just here temporarily so the project doesn't break.
         };
 
         _context.Customers.Add(customer);
@@ -94,7 +94,7 @@ public class AuthController : ControllerBase
 
         account.IsApproved = true;
 
-        if (account.Customer != null) account.Customer.IsApproved = true; // Temporary measure to ensure customer is also approved until we remove IsApproved from customer.
+        //if (account.Customer != null) account.Customer.IsApproved = true; // Temporary measure to ensure customer is also approved until we remove IsApproved from customer.
 
         await _context.SaveChangesAsync();
 
@@ -131,7 +131,7 @@ public class AuthController : ControllerBase
                 Username = a.Username,
                 Role = a.Role,
                 IsApproved = a.IsApproved,
-                CompanyName = a.Customer!.Name,
+                CompanyName = a.Customer!.CompanyName,
                 OrgNumber = a.Customer!.OrgNumber
             })
             .ToListAsync();
@@ -151,7 +151,7 @@ public class AuthController : ControllerBase
                 Username = a.Username,
                 Role = a.Role,
                 IsApproved = a.IsApproved,
-                CompanyName = a.Customer!.Name,
+                CompanyName = a.Customer!.CompanyName,
                 OrgNumber = a.Customer!.OrgNumber
             })
             .ToListAsync();

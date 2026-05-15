@@ -29,10 +29,21 @@ public class CustomerController : ControllerBase
 
         return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
     }
-
-    [HttpGet("{id}")]
+    
+    [HttpGet("list")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCustomerList()
+    {
+        var rows = await _context.Customers
+            .OrderBy(c => c.Name)
+            .Select(c => new { c.Id, c.Name, c.Company, c.Email, c.OrgNumber })
+            .ToListAsync();
+
+        return Ok(rows);
+    }
+
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<Customer>> GetCustomer(int id)
     {
         var customer = await _context.Customers.FindAsync(id);
@@ -43,7 +54,7 @@ public class CustomerController : ControllerBase
         return Ok(customer);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

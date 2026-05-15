@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using IPShop.Api.Data;
 using IPShop.Api.Models;
 
@@ -30,7 +31,18 @@ public class CustomerController : ControllerBase
         return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("list")]
+    public async Task<IActionResult> GetCustomerList()
+    {
+        var rows = await _context.Customers
+            .OrderBy(c => c.Name)
+            .Select(c => new { c.Id, c.Name, c.Company, c.Email, c.OrgNumber })
+            .ToListAsync();
+
+        return Ok(rows);
+    }
+
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<Customer>> GetCustomer(int id)
     {
         var customer = await _context.Customers.FindAsync(id);
@@ -41,7 +53,7 @@ public class CustomerController : ControllerBase
         return customer;
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateCustomer(int id, Customer updatedCustomer)
     {
         if (id != updatedCustomer.Id)
